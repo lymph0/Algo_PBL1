@@ -224,9 +224,8 @@ details summary{ cursor:pointer; font-weight:600; }
     <details>
       <summary>우리 건물 grid 넣기 / 내보내기</summary>
       <div class="help">
-        <p>두 가지 형식을 받습니다.</p>
-        <p><b>① 층별로 입력</b>: 층마다 같은 크기의 grid를 쓰고 층 사이에 <code>---</code> 한 줄을 넣습니다. 각 층의 <b>맨 오른쪽 열</b>에 <code>S</code>를 쓰면 그 행이 다음 층 맨 왼쪽 열로 이어지는 계단이 됩니다. 자동으로 계단 열(나머지는 벽)을 끼워 하나의 grid로 합칩니다.</p>
-        <p><b>② 이미 합친 grid</b>: 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>. 아래 층 수를 맞춰 주세요 (열 수 = 층 수 × 층 너비 + 계단 열 수).</p>
+        <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>.</p>
+        <p>층 사이의 계단 열은 계단인 행만 <code>.</code>, 나머지는 <code>#</code>로 씁니다. 아래 층 수를 맞춰 주세요 (열 수 = 층 수 × 층 너비 + 계단 열 수). 층 수는 3D에서 층을 나눠 그릴 때만 쓰이고 알고리즘 결과에는 영향이 없습니다.</p>
         <p>기호: <code>@</code> 시작 · <code>#</code> 벽 · <code>.</code> 빈칸 · <code>a–f</code> 열쇠 · <code>A–F</code> 자물쇠 · <code>G</code> 도착 지점. 모든 열쇠를 모은 상태로 G에 도착해야 목표입니다 (열쇠가 덜 모였을 때 G를 지나가는 건 괜찮습니다).</p>
       </div>
       <textarea id="io" spellcheck="false" aria-label="grid 입력"></textarea>
@@ -250,60 +249,18 @@ const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
 const INF = 1e9;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// ---------- sample building (per floor; S in the rightmost column = stairs to next floor) ----------
-const SAMPLE_FLOORS = [
-  [ // 1F
-    "#############",
-    "#.a.#...#...#",
-    "#...#...#...#",
-    "##.###.####.#",
-    "@...........S",
-    "#####.####C##",
-    "#...#...#...#",
-    "#...#.......#",
-    "#############"
-  ],
-  [ // 2F
-    "#############",
-    "#...#...#.b.#",
-    "#...#...#...#",
-    "##.###.###A##",
-    ".............",
-    "#.####.####.#",
-    "#...#...#...#",
-    "#...#...#...S",
-    "#############"
-  ],
-  [ // 3F
-    "#############",
-    "#...#.c.#.G.#",
-    "#...#...#...#",
-    "##.###B###.##",
-    "#...........#",
-    "#.####.####.#",
-    "#...#...#...#",
-    "....#...#...#",
-    "#############"
-  ]
+// ---------- sample building (one grid: 1F | stair col | 2F | stair col | 3F, each floor 13 wide) ----------
+const SAMPLE = [
+  "#########################################",
+  "#.a.#...#...###...#...#.b.###...#.c.#.G.#",
+  "#...#...#...###...#...#...###...#...#...#",
+  "##.###.####.####.###.###A#####.###B###.##",
+  "@..........................##...........#",
+  "#####.####C####.####.####.###.####.####.#",
+  "#...#...#...###...#...#...###...#...#...#",
+  "#...#.......###...#...#.........#...#...#",
+  "#########################################"
 ];
-
-function mergeFloors(blocks){
-  const H = blocks[0].length, W = blocks[0][0].length;
-  for (const b of blocks){
-    if (b.length !== H) throw new Error('모든 층의 행 수가 같아야 합니다 (every floor needs the same number of rows).');
-    for (const row of b) if (row.length !== W) throw new Error('모든 행의 길이가 같아야 합니다 (every row needs the same length).');
-  }
-  const rows = [];
-  for (let r = 0; r < H; r++){
-    let s = '';
-    blocks.forEach((b, f) => {
-      s += b[r].replace(/S/g, '.');
-      if (f < blocks.length - 1) s += (b[r][W-1] === 'S') ? '.' : '#';
-    });
-    rows.push(s);
-  }
-  return rows;
-}
 
 // ---------- app state ----------
 const S = {
@@ -990,12 +947,7 @@ function importText(txt){
     if (!Array.isArray(arr) || !arr.length) throw new Error('빈 배열입니다.');
     rows = arr.map(String);
   } else {
-    const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
-    const blocks = [[]];
-    for (const l of lines){ if (/^-{3,}$/.test(l)) blocks.push([]); else blocks[blocks.length-1].push(l); }
-    const bl = blocks.filter(b => b.length);
-    if (bl.length > 1){ rows = mergeFloors(bl); F = bl.length; }
-    else rows = bl[0].map(l => l.replace(/S/g, '.'));
+    rows = txt.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
   }
   setGrid(rows, F);
 }
@@ -1009,11 +961,10 @@ $('#exportBtn').addEventListener('click', () => {
 });
 function loadSample(){
   $('#floorsIn').value = 3;
-  $('#io').value = SAMPLE_FLOORS.map(f => f.join('\n')).join('\n---\n');
+  $('#io').value = SAMPLE.join('\n');
   importText($('#io').value);
   $('#ioErr').textContent = '';
   commitGrid(); fitCamera(true);
-  $('#io').value = SAMPLE_FLOORS.map(f => f.join('\n')).join('\n---\n');
 }
 $('#sampleBtn').addEventListener('click', loadSample);
 

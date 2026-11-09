@@ -1,6 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from solution import shortestPathAllKeys, merge_floors, load_floors
+from solution import shortestPathAllKeys, load_grid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -17,7 +17,7 @@ def test_goal_rules():
     assert shortestPathAllKeys(["@.G"]) == 2                        # 열쇠가 없으면 G까지 최단 거리
 
 def test_sample_building():
-    grid = merge_floors(load_floors(os.path.join(ROOT, "grids", "sample_building.txt")))
+    grid = load_grid(os.path.join(ROOT, "grids", "sample_building.txt"))
     assert len(grid) == 9 and len(grid[0]) == 41
     assert shortestPathAllKeys(grid) == 65
 
