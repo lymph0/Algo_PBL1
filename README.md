@@ -8,8 +8,8 @@ We apply LeetCode 864 to a 3-floor building grid and visualize the BFS over stat
 | 파일 | 설명 |
 |---|---|
 | `index.html` | 시각화 페이지 (3D 건물, 2D grid, 상태 공간 레이어, 코드 하이라이트). 브라우저로 열면 바로 실행됩니다. |
-| `solution.py` | BFS 구현과 층별 grid 합치기 (`merge_floors`) |
-| `grids/sample_building.txt` | 예시 건물 (층 사이 `---`, 오른쪽 끝 `S` = 다음 층 계단) |
+| `solution.py` | BFS 구현과 grid 파일 읽기 (`load_grid`) |
+| `grids/sample_building.txt` | 예시 건물: 3개 층을 이어 붙인 grid 한 개 (9 × 41) |
 | `tests/test_solution.py` | LeetCode 예제와 예시 건물 테스트 |
 
 ## 실행 (Run)
@@ -27,8 +27,9 @@ python tests/test_solution.py      # 또는 pytest
 
 ## Grid 구성 방법 (How floors are joined)
 
-층별 grid를 같은 행끼리 `1F | 계단 열 | 2F | 계단 열 | 3F`로 이어 붙입니다. 계단 열은 계단 칸만 열고 나머지는 벽이라, 다음 층으로 가려면 반드시 계단을 지나야 합니다.
-계단은 아래층의 오른쪽 끝과 위층의 왼쪽 끝을 잇기 때문에, 3D에서는 2F를 좌우 반전해서 그려 계단이 같은 자리에 오도록 했습니다.
+입력은 **grid 한 개**입니다 (한 줄 = 한 행, 층 구분자 없음). 층별 도면을 같은 행끼리 `1F | 계단 열 | 2F | 계단 열 | 3F`로 이어 붙인 모양으로 씁니다.
+예시 건물은 층 너비 13, 층 3개라 열 수가 `13 × 3 + 2 = 41`입니다. 계단 열은 계단인 행만 `.`, 나머지는 `#`라서, 다음 층으로 가려면 반드시 계단을 지나야 합니다.
+계단은 아래층의 오른쪽 끝과 위층의 왼쪽 끝을 잇기 때문에, 3D에서는 2F를 좌우 반전해서 그려 계단이 같은 자리에 오도록 했습니다. 층 수는 시각화 페이지에서 3D로 나눠 그릴 때만 쓰이고, 알고리즘은 grid 한 개만 봅니다.
 
 ## 알고리즘 (Algorithm)
 

@@ -8,41 +8,12 @@ from typing import List
 DIRS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 
-def merge_floors(floors: List[List[str]]) -> List[str]:
-    """층별 grid를 같은 행끼리 이어 붙입니다 (1F | 계단 열 | 2F | 계단 열 | 3F).
-    각 층의 맨 오른쪽 열에 'S'가 있으면 그 행의 계단 열을 열고, 나머지는 벽 '#'으로 막습니다.
-    Join floors row by row; an 'S' in a floor's rightmost column opens a stair to the next floor.
-    """
-    h, w = len(floors[0]), len(floors[0][0])
-    for f in floors:
-        assert len(f) == h and all(len(row) == w for row in f), "all floors must have the same size"
-    rows = []
-    for r in range(h):
-        s = ""
-        for i, f in enumerate(floors):
-            s += f[r].replace("S", ".")
-            if i < len(floors) - 1:
-                s += "." if f[r][w - 1] == "S" else "#"
-        rows.append(s)
-    return rows
-
-
-def load_floors(path: str) -> List[List[str]]:
-    """'---' 줄로 층을 구분한 텍스트 파일을 읽습니다. Floors are separated by a '---' line."""
-    floors, cur = [], []
+def load_grid(path: str) -> List[str]:
+    """이미 이어 붙인 grid 한 개를 읽습니다 (한 줄 = 한 행). Read one merged grid, one row per line."""
     with open(path, encoding="utf-8") as fp:
-        for line in fp:
-            line = line.strip()
-            if not line:
-                continue
-            if set(line) == {"-"}:
-                floors.append(cur)
-                cur = []
-            else:
-                cur.append(line)
-    if cur:
-        floors.append(cur)
-    return floors
+        rows = [line.strip() for line in fp if line.strip()]
+    assert rows and all(len(r) == len(rows[0]) for r in rows), "every row must have the same length"
+    return rows
 
 
 def shortest_path_all_keys(grid: List[str]) -> int:
@@ -85,6 +56,6 @@ def shortest_path_all_keys(grid: List[str]) -> int:
 if __name__ == "__main__":
     import sys
     path = sys.argv[1] if len(sys.argv) > 1 else "grids/sample_building.txt"
-    grid = merge_floors(load_floors(path))
+    grid = load_grid(path)
     print("\n".join(grid))
     print("answer:", shortest_path_all_keys(grid))
