@@ -5,14 +5,13 @@ We apply a LeetCode 864 variant (pick up keys to open locks, stop at the goal `G
 
 **사이트 (Live):** https://lymph0.github.io/Algo_PBL1/
 
-> 원래 LC 864 버전(열쇠를 다 모으는 순간 종료)은 `main` 브랜치에 있습니다.
-
 ## 구성 (Structure)
 
 | 파일 | 설명 |
 |---|---|
 | `index.html` | 시각화 페이지 (3D 건물, 2D grid, 상태 공간 레이어, 코드 하이라이트, `solution3.py` 실행 결과 출력). 브라우저로 열면 바로 실행됩니다. |
 | `solution3.py` | **최종 구현.** BFS (`shortestPathAllKeys`)와 입력 검사 (`load_grid`), 같은 폴더의 `input.txt` / `test_case_*.txt`를 읽어 최단 이동 횟수를 출력 |
+| `solution2.py` | solution3과 같은 규칙의 대화형 버전 (파일 이름을 입력받아 미로와 `Shortest distance` 출력) |
 | `solution.py` | 이전 버전 (모든 열쇠를 모은 뒤 G 도착) |
 | `grids/sample_building.txt` | 예시 건물: 3개 층을 이어 붙인 grid 한 개 (9 × 41) |
 | `tests/test_solution.py` | LeetCode 예제와 예시 건물 테스트 |
