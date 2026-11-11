@@ -125,6 +125,13 @@ details summary{ cursor:pointer; font-weight:600; }
 .help code{ font-family:"IBM Plex Mono", monospace; color:var(--ink); }
 .err{ color:var(--bad); font-size:13px; margin-top:6px; min-height:1.2em; }
 .res-ok{ color:var(--ok); } .res-bad{ color:var(--bad); }
+pre.console{ margin:0; padding:12px 14px; background:var(--code-bg); border-radius:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:13px; line-height:1.6; overflow-x:auto; white-space:pre; color:var(--ink); }
+pre.console .prompt{ color:var(--muted); }
+pre.console .ans{ color:var(--ok); font-weight:600; }
+pre.console .errl{ color:var(--bad); font-weight:600; }
+dl.outstats{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:10px 0 0; font-size:13px; }
+dl.outstats dt{ color:var(--muted); }
+dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; }
 @media (prefers-reduced-motion: reduce){ *{ scroll-behavior:auto !important; } }
 </style>
 </head>
@@ -132,10 +139,10 @@ details summary{ cursor:pointer; font-weight:600; }
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>열쇠를 모두 모으는 최단 경로</h1>
-      <p class="sub">3층 건물 도면을 하나의 grid로 이어 붙이고, 상태 (row, col, keys) 위에서 BFS가 퍼져 나가는 과정을 봅니다. Shortest path to get all keys on a multi-floor building grid.</p>
+      <h1>열쇠로 문을 열며 출구 G까지 가는 최단 경로</h1>
+      <p class="sub">3층 건물 도면을 하나의 grid로 이어 붙이고, 상태 (row, col, keys) 위에서 BFS가 퍼져 나가는 과정을 봅니다. 자물쇠(A–F)는 맞는 열쇠(a–f)가 있어야 지나갈 수 있고, 도착 지점 G에 처음 닿는 순간 끝납니다. Pick up keys to open locks, stop at the goal G.</p>
     </div>
-    <p class="badge">LeetCode 864. Shortest Path to Get All Keys</p>
+    <p class="badge">LeetCode 864 변형: 열쇠 + 도착 지점 G</p>
   </header>
 
   <div class="stage">
@@ -193,6 +200,17 @@ details summary{ cursor:pointer; font-weight:600; }
     </aside>
   </div>
 
+  <section class="block" id="outSec">
+    <div class="blockhead">
+      <div>
+        <h2>실행 결과 <span class="mono" style="color:var(--muted);font-weight:400;font-size:13px">python solution3.py</span></h2>
+        <p>지금 grid를 <code class="mono">input.txt</code>로 저장해 solution3.py를 실행했을 때 터미널에 찍히는 출력입니다. grid를 바꾸면 바로 다시 계산됩니다.</p>
+      </div>
+    </div>
+    <pre class="console" id="console"></pre>
+    <dl class="outstats" id="outStats"></dl>
+  </section>
+
   <section class="block">
     <div class="blockhead">
       <div>
@@ -226,7 +244,7 @@ details summary{ cursor:pointer; font-weight:600; }
       <div class="help">
         <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>.</p>
         <p>층 사이의 계단 열은 계단인 행만 <code>.</code>, 나머지는 <code>#</code>로 씁니다. 아래 층 수를 맞춰 주세요 (열 수 = 층 수 × 층 너비 + 계단 열 수). 층 수는 3D에서 층을 나눠 그릴 때만 쓰이고 알고리즘 결과에는 영향이 없습니다.</p>
-        <p>기호: <code>@</code> 시작 · <code>#</code> 벽 · <code>.</code> 빈칸 · <code>a–f</code> 열쇠 · <code>A–F</code> 자물쇠. 따로 도착 지점은 없고, 모든 열쇠를 모으는 순간이 목표입니다.</p>
+        <p>기호: <code>@</code> 시작 · <code>#</code> 벽 · <code>.</code> 빈칸 · <code>a–f</code> 열쇠 · <code>A–F</code> 자물쇠 · <code>G</code> 도착 지점. G에 도착하면 바로 끝납니다. 자물쇠는 같은 글자의 열쇠를 이미 주웠을 때만 지나갈 수 있습니다. 시작점 @와 도착점 G는 각각 정확히 하나여야 합니다.</p>
       </div>
       <textarea id="io" spellcheck="false" aria-label="grid 입력"></textarea>
       <div class="row">
@@ -252,7 +270,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 // ---------- sample building (one grid: 1F | stair col | 2F | stair col | 3F, each floor 13 wide) ----------
 const SAMPLE = [
   "#########################################",
-  "#.a.#...#...###...#...#.b.###...#.c.#...#",
+  "#.a.#...#...###...#...#.b.###...#.c.#.G.#",
   "#...#...#...###...#...#...###...#...#...#",
   "##.###.####.####.###.###A#####.###B###.##",
   "@..........................##...........#",
@@ -284,6 +302,7 @@ function mix(a,b,t){ const A = hexToRgb(a), B = hexToRgb(b); return '#' + A.map(
 const popc = x => { let c = 0; while (x){ c += x & 1; x >>= 1; } return c; };
 const isKey = ch => ch >= 'a' && ch <= 'f';
 const isLock = ch => ch >= 'A' && ch <= 'F';
+const isGoal = ch => ch === 'G';
 
 function colInfo(c){
   if (S.F <= 1) return { sep:false, f:0, lc:c };
@@ -303,7 +322,7 @@ function setGrid(rows, F){
   const n = rows[0].length;
   rows.forEach((r,i) => {
     if (r.length !== n) throw new Error(`${i}번 행 길이가 다릅니다 (${r.length} ≠ ${n}).`);
-    if (!/^[.#@a-fA-F]*$/.test(r)) throw new Error(`${i}번 행에 쓸 수 없는 기호가 있습니다: ${r}`);
+    if (!/^[.#@a-fA-FG]*$/.test(r)) throw new Error(`${i}번 행에 쓸 수 없는 기호가 있습니다: ${r}`);
   });
   S.grid = rows.map(r => r.split(''));
   S.m = rows.length; S.n = n;
@@ -322,7 +341,9 @@ function findChar(ch){
 function runKeys(){
   const { grid, m, n } = S;
   const st = findChar('@');
-  if (!st) return { error:'시작점 @가 없습니다. 편집 모드에서 @를 찍어 주세요.' };
+  const count = ch => grid.reduce((a,row) => a + row.filter(x => x === ch).length, 0);
+  if (count('@') !== 1) return { error:'출발점 @는 정확히 하나여야 합니다.' };
+  if (count('G') !== 1) return { error:'도착점 G는 정확히 하나여야 합니다.' };
   let FULL = 0, kb = 0;
   for (const row of grid) for (const ch of row) if (isKey(ch)){ const i = ch.charCodeAt(0) - 97; FULL |= 1 << i; kb = Math.max(kb, i + 1); }
   const sid = (r,c,k) => ((r*n + c) << 6) | k;
@@ -335,7 +356,7 @@ function runKeys(){
   while (head < q.length){
     const [r,c,k,d] = q[head++];
     ev.push({ t:'pop', r, c, k, d, q:q.length - head });
-    if (k === FULL){
+    if (isGoal(grid[r][c])){
       const path = [];
       let s = sid(r,c,k);
       while (s !== -1){ const cell = s >> 6; path.push([Math.floor(cell / n), cell % n, s & 63]); s = par[s]; }
@@ -365,6 +386,7 @@ function runKeys(){
 
 function run(){
   S.res = runKeys();
+  updateConsole();
   S.walk = null;
   resetPlayback();
 }
@@ -479,6 +501,9 @@ function draw2D(){
       const kc = C.keys[ch.charCodeAt(0)-65];
       ctx.fillStyle = kc; ctx.fillRect(x + cs*.12, y + cs*.12, cs*.76, cs*.76);
       ctx.fillStyle = '#fff'; ctx.font = `600 ${fs}px "IBM Plex Mono", monospace`; ctx.fillText(ch, cx, cy + 1);
+    } else if (isGoal(ch)){
+      ctx.strokeStyle = C.ok; ctx.lineWidth = 2.5; ctx.strokeRect(x + cs*.14, y + cs*.14, cs*.72, cs*.72);
+      ctx.fillStyle = C.ok; ctx.font = `700 ${fs}px "IBM Plex Mono", monospace`; ctx.fillText('G', cx, cy + 1);
     } else if (ch === '@'){
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, cs*.3, 0, 7); ctx.stroke();
       ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(cx, cy, cs*.1, 0, 7); ctx.fill();
@@ -557,24 +582,24 @@ const CODE = {
   keys: [
     "def shortestPathAllKeys(grid):",
     "    m, n = len(grid), len(grid[0])",
-    "    k = sum(ch.islower() for row in grid for ch in row)",
-    "    FULL = (1 << k) - 1",
-    "    q = deque([(sr, sc, 0, 0)])        # (row, col, keys, moves)",
-    "    seen = {(sr, sc, 0)}",
-    "    while q:",
-    "        r, c, keys, moves = q.popleft()",
-    "        if keys == FULL: return moves",
-    "        for dr, dc in ((-1,0), (1,0), (0,-1), (0,1)):",
+    "    start = position of '@'",
+    "    # 도착점 G에 닿으면 종료 (열쇠는 자물쇠를 열 때만 필요)",
+    "    queue = deque([(sr, sc, 0, 0)])    # (row, col, mask, dist)",
+    "    visited = {(sr, sc, 0)}",
+    "    while queue:",
+    "        r, c, mask, dist = queue.popleft()",
+    "        if grid[r][c] == 'G': return dist",
+    "        for dr, dc in directions:",
     "            nr, nc = r + dr, c + dc",
     "            if not (0 <= nr < m and 0 <= nc < n): continue",
-    "            ch = grid[nr][nc]",
-    "            if ch == '#': continue",
-    "            nk = keys",
-    "            if ch.islower(): nk |= 1 << (ord(ch) - ord('a'))",
-    "            if ch.isupper() and not keys & (1 << (ord(ch) - ord('A'))): continue",
-    "            if (nr, nc, nk) in seen: continue",
-    "            seen.add((nr, nc, nk))",
-    "            q.append((nr, nc, nk, moves + 1))",
+    "            cell = grid[nr][nc]",
+    "            if cell == '#': continue",
+    "            if 'A' <= cell <= 'F' and not mask & (1 << (ord(cell) - ord('A'))): continue",
+    "            new_mask = mask",
+    "            if 'a' <= cell <= 'f': new_mask |= 1 << (ord(cell) - ord('a'))",
+    "            if (nr, nc, new_mask) in visited: continue",
+    "            visited.add((nr, nc, new_mask))",
+    "            queue.append((nr, nc, new_mask, dist + 1))",
     "    return -1"
   ]
 };
@@ -587,9 +612,9 @@ function linesFor(e){
       case 'goal': return [8];
       case 'oob': return [9,10,11];
       case 'wall': return [12,13];
-      case 'locked': return [16];
+      case 'locked': return [14];
       case 'seen': return [17];
-      case 'push': return isKey(e.ch) ? [14,15,18,19] : isLock(e.ch) ? [16,18,19] : [18,19];
+      case 'push': return isKey(e.ch) ? [15,16,18,19] : isLock(e.ch) ? [14,18,19] : [18,19];
       case 'fail': return [20];
     }
 
@@ -599,7 +624,7 @@ function linesFor(e){
 function buildCode(){
   const ol = $('#code'); ol.innerHTML = '';
   for (const line of CODE[S.mode]){ const li = document.createElement('li'); li.textContent = line; ol.append(li); }
-  $('#codeTitle').textContent = 'LC 864, BFS on (row, col, keys)';
+  $('#codeTitle').textContent = 'solution3.py, BFS on (row, col, mask)';
 }
 function msg(e){
   if (!e) return { text:'재생을 누르거나 한 단계씩 넘겨 보세요.', cls:'' };
@@ -608,17 +633,17 @@ function msg(e){
     const K = x => `<code>${bin(x)}</code>`;
     switch (e.t){
       case 'init': return { text:`시작 상태 ${P(e.r,e.c)}, keys = ${K(0)}을 큐에 넣고 seen에 기록합니다.`, cls:'' };
-      case 'pop': return { text:`큐에서 꺼냄: (${e.r}, ${e.c}, keys = ${K(e.k)}), moves = ${e.d}. 위치: ${where(e.r,e.c)}`, cls:'hot' };
-      case 'goal': return { text:`keys == (1 &lt;&lt; k) − 1 → ${K(e.k)} == ${K(S.res.FULL)}. 모든 열쇠를 모았으므로 <b>return ${e.d}</b>`, cls:'ok' };
+      case 'pop': return { text:`큐에서 꺼냄: (${e.r}, ${e.c}, mask = ${K(e.k)}), dist = ${e.d}. 위치: ${where(e.r,e.c)}`, cls:'hot' };
+      case 'goal': return { text:`grid[r][c] == 'G' (keys = ${K(e.k)}). 도착 지점에 왔으므로 <b>return ${e.d}</b>`, cls:'ok' };
       case 'oob': return { text:`${P(e.nr,e.nc)}는 grid 밖 → skip`, cls:'bad' };
       case 'wall': return { text:`${P(e.nr,e.nc)}는 벽 “#” → skip${colInfo(e.nc).sep ? ' (계단 열의 막힌 칸)' : ''}`, cls:'bad' };
-      case 'locked': { const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: keys & (1 &lt;&lt; ${i}) = ${K(e.k)} & ${K(1<<i)} = ${K(0)} → 열쇠가 없어 skip`, cls:'bad' }; }
+      case 'locked': { const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k)} & ${K(1<<i)} = ${K(0)} → 열쇠가 없어 skip`, cls:'bad' }; }
       case 'seen': return { text:`(${e.nr}, ${e.nc}, keys = ${K(e.nk)})는 이미 방문한 상태 → skip`, cls:'bad' };
       case 'push':
-        if (isKey(e.ch)){ const i = e.ch.charCodeAt(0) - 97; return { text:`열쇠 ${e.ch} 획득: keys | (1 &lt;&lt; ${i}) = ${K(e.k)} | ${K(1<<i)} = ${K(e.nk)} → push (moves ${e.d+1})`, cls:'key' }; }
-        if (isLock(e.ch)){ const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: keys & (1 &lt;&lt; ${i}) = ${K(e.k & (1<<i))} ≠ 0 → 통과, push (${e.nr}, ${e.nc}, ${K(e.nk)})`, cls:'key' }; }
+        if (isKey(e.ch)){ const i = e.ch.charCodeAt(0) - 97; return { text:`열쇠 ${e.ch} 획득: mask | (1 &lt;&lt; ${i}) = ${K(e.k)} | ${K(1<<i)} = ${K(e.nk)} → push (moves ${e.d+1})`, cls:'key' }; }
+        if (isLock(e.ch)){ const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k & (1<<i))} ≠ 0 → 통과, push (${e.nr}, ${e.nc}, ${K(e.nk)})`, cls:'key' }; }
         return { text:`새 상태 (${e.nr}, ${e.nc}, keys = ${K(e.nk)}) push, moves ${e.d+1}${colInfo(e.nc).sep ? ' · 계단 진입' : ''}`, cls:'ok' };
-      case 'fail': return { text:`큐가 비었습니다 → <b>return -1</b> (모든 열쇠를 모을 수 없음)`, cls:'bad' };
+      case 'fail': return { text:`큐가 비었습니다 → <b>return -1</b> (G에 갈 수 없음)`, cls:'bad' };
     }
 
   }
@@ -673,6 +698,33 @@ function updatePanels(){
   }
   lg.scrollTop = lg.scrollHeight;
   $('#walkBtn').disabled = !(D && D.done && S.res.path && S.res.path.length > 1);
+}
+
+// ---------- program output (mirrors solution3.py's print) ----------
+function escHtml(x){ return String(x).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[ch]); }
+function updateConsole(importErr){
+  const out = [`<span class="prompt">$ python solution3.py</span>`];
+  const st = $('#outStats'); let html = '';
+  const err = importErr || (S.res && S.res.error);
+  if (err){
+    out.push(`<span class="errl">input.txt: 입력 오류 - ${escHtml(err)}</span>`);
+  } else if (S.res){
+    out.push(`input.txt: 최단 이동 횟수 = <span class="${S.res.ok ? 'ans' : 'errl'}">${S.res.moves}</span>`);
+    const pops = S.res.events.filter(e => e.t === 'pop').length;
+    const pushes = S.res.events.filter(e => e.t === 'push' || e.t === 'init').length;
+    html += `<dt>grid</dt><dd>${S.m} × ${S.n}</dd>`;
+    html += `<dt>큐에서 꺼낸 상태</dt><dd>${pops}</dd>`;
+    html += `<dt>방문한 상태</dt><dd>${pushes}</dd>`;
+    if (S.res.ok && S.res.path){
+      const got = [];
+      for (const [r,c] of S.res.path){ const ch = S.grid[r][c]; if (isKey(ch) && !got.includes(ch)) got.push(ch); }
+      html += `<dt>경로에서 주운 열쇠</dt><dd>${got.length ? got.join(', ') : '없음'}</dd>`;
+      const fin = S.res.path[S.res.path.length - 1];
+      html += `<dt>도착 위치</dt><dd>(${fin[0]}, ${fin[1]}) · ${where(fin[0], fin[1])}</dd>`;
+    }
+  }
+  $('#console').innerHTML = out.join(String.fromCharCode(10));
+  st.innerHTML = html;
 }
 
 // ---------- 3D ----------
@@ -783,6 +835,14 @@ function build3D(){
       box.position.set(p.x, p.y + 0.33, p.z); g.add(box);
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color:kc }));
       edges.position.copy(box.position); g.add(edges);
+    } else if (isGoal(ch)){
+      const gc = new THREE.Color(C.ok);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), new THREE.MeshStandardMaterial({ color:new THREE.Color(C.ink) }));
+      pole.position.set(p.x - 0.2, p.y + 0.45, p.z); g.add(pole);
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.26, 0.03), new THREE.MeshStandardMaterial({ color:gc, emissive:gc, emissiveIntensity:0.35 }));
+      flag.position.set(p.x + 0.03, p.y + 0.76, p.z); g.add(flag);
+      const pad = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 8, 4), new THREE.MeshStandardMaterial({ color:gc }));
+      pad.rotation.x = Math.PI/2; pad.rotation.z = Math.PI/4; pad.position.set(p.x, p.y + 0.04, p.z); g.add(pad);
     } else if (ch === '@'){
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.07, 10, 28), new THREE.MeshStandardMaterial({ color:new THREE.Color(C.ink) }));
       ring.rotation.x = Math.PI/2; ring.position.set(p.x, p.y + 0.06, p.z); g.add(ring);
@@ -813,7 +873,7 @@ function build3D(){
   if (!T.home) fitCamera(true);
   // legend
   const lgd = $('#legend3d');
-  const items = [[C.lo,'방문 (열쇠 적음)'],[C.hi,'방문 (열쇠 많음)'],[C.frontier,'큐에 있음'],[C.hot,'현재 / 최단 경로'],[C.stair,'계단']];
+  const items = [[C.lo,'방문 (열쇠 적음)'],[C.hi,'방문 (열쇠 많음)'],[C.frontier,'큐에 있음'],[C.hot,'현재 / 최단 경로'],[C.stair,'계단'],[C.ok,'도착 지점 G']];
   lgd.innerHTML = items.map(([c,t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 function fitCamera(reset){
@@ -886,7 +946,7 @@ function startWalk(){
 }
 
 // ---------- editor ----------
-const TOOLS = [['.','빈칸'],['#','벽'],['@','시작'],['a',''],['b',''],['c',''],['d',''],['e',''],['f',''],['A',''],['B',''],['C',''],['D',''],['E',''],['F','']];
+const TOOLS = [['.','빈칸'],['#','벽'],['@','시작'],['G','도착'],['a',''],['b',''],['c',''],['d',''],['e',''],['f',''],['A',''],['B',''],['C',''],['D',''],['E',''],['F','']];
 function buildPalette(){
   const p = $('#palette'); p.innerHTML = '';
   for (const [ch, lab] of TOOLS){
@@ -908,7 +968,7 @@ function paint(r,c){
   const t = S.tool, info = colInfo(c);
   if (info.sep && t !== '#' && t !== '.') return;
   if (S.grid[r][c] === t) return;
-  if (t === '@'){ const old = findChar(t); if (old) S.grid[old[0]][old[1]] = '.'; }
+  if (t === '@' || t === 'G'){ const old = findChar(t); if (old) S.grid[old[0]][old[1]] = '.'; }
   S.grid[r][c] = t; painted = true;
   S.res = { events:[], kb:S.res ? S.res.kb : 1, FULL:S.res ? S.res.FULL : 0 }; resetD();
   draw2D();
@@ -940,7 +1000,7 @@ function importText(txt){
 }
 $('#applyBtn').addEventListener('click', () => {
   try { importText($('#io').value); $('#ioErr').textContent = ''; commitGrid(); T.home = null; fitCamera(true); }
-  catch (e){ $('#ioErr').textContent = e.message; }
+  catch (e){ $('#ioErr').textContent = e.message; updateConsole(e.message); }
 });
 $('#exportBtn').addEventListener('click', () => {
   $('#io').value = JSON.stringify(S.grid.map(r => r.join('')), null, 0).replace(/","/g, '",\n "');

@@ -1,11 +1,8 @@
-"""LeetCode 864. Shortest Path to Get All Keys
-BFS over states (row, col, keys) on a multi-floor building grid.
-상태 (row, col, keys) 위에서 BFS를 돌려 모든 열쇠를 모으는 최소 이동 횟수를 구합니다.
+"""LeetCode 864 variant: collect all keys, then reach the goal 'G'.
+상태 (row, col, mask) 위에서 BFS를 돌려, 모든 열쇠를 모은 뒤 도착 지점 G에 닿는 최소 이동 횟수를 구합니다.
 """
 from collections import deque
 from typing import List
-
-DIRS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 
 def load_grid(path: str) -> List[str]:
@@ -16,40 +13,74 @@ def load_grid(path: str) -> List[str]:
     return rows
 
 
-def shortest_path_all_keys(grid: List[str]) -> int:
+def shortestPathAllKeys(grid):
     m, n = len(grid), len(grid[0])
-    k = 0
+
+    start = None
+    total_keys = 0
+
+    # 시작점과 열쇠 개수 확인
     for r in range(m):
         for c in range(n):
-            ch = grid[r][c]
-            if ch == "@":
-                sr, sc = r, c
-            elif ch.islower():
-                k += 1
-    full = (1 << k) - 1                      # all keys collected
+            if grid[r][c] == '@':
+                start = (r, c)
 
-    q = deque([(sr, sc, 0, 0)])              # (row, col, keys, moves)
-    seen = {(sr, sc, 0)}
-    while q:
-        r, c, keys, moves = q.popleft()
-        if keys == full:                     # keys == (1 << k) - 1
-            return moves
-        for dr, dc in DIRS:
+            if 'a' <= grid[r][c] <= 'f':
+                total_keys += 1
+
+    # 모든 열쇠를 획득한 상태
+    target = (1 << total_keys) - 1
+
+    # BFS 초기화
+    queue = deque([(start[0], start[1], 0, 0)])
+    visited = set()
+    visited.add((start[0], start[1], 0))
+
+    directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+    while queue:
+        r, c, mask, dist = queue.popleft()
+
+        # 모든 열쇠를 획득하고 목표 지점에 도착
+        if mask == target and grid[r][c] == 'G':
+            return dist
+
+        for dr, dc in directions:
             nr, nc = r + dr, c + dc
+
+            # 격자 범위 확인
             if not (0 <= nr < m and 0 <= nc < n):
-                continue                     # out of bounds
-            ch = grid[nr][nc]
-            if ch == "#":
-                continue                     # wall
-            nk = keys
-            if ch.islower():
-                nk |= 1 << (ord(ch) - ord("a"))          # pick up key: bitwise OR
-            if ch.isupper() and not keys & (1 << (ord(ch) - ord("A"))):
-                continue                     # lock without its key: bitwise AND
-            if (nr, nc, nk) in seen:
-                continue                     # state already visited
-            seen.add((nr, nc, nk))
-            q.append((nr, nc, nk, moves + 1))
+                continue
+
+            cell = grid[nr][nc]
+
+            # 벽 확인
+            if cell == '#':
+                continue
+
+            # 자물쇠 확인
+            if 'A' <= cell <= 'F':
+                bit = 1 << (ord(cell) - ord('A'))
+
+                if not (mask & bit):
+                    continue
+
+            # 열쇠 획득
+            new_mask = mask
+
+            if 'a' <= cell <= 'f':
+                bit = 1 << (ord(cell) - ord('a'))
+                new_mask |= bit
+
+            # 방문 여부 확인
+            state = (nr, nc, new_mask)
+
+            if state in visited:
+                continue
+
+            visited.add(state)
+            queue.append((nr, nc, new_mask, dist + 1))
+
     return -1
 
 
@@ -58,4 +89,4 @@ if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "grids/sample_building.txt"
     grid = load_grid(path)
     print("\n".join(grid))
-    print("answer:", shortest_path_all_keys(grid))
+    print("answer:", shortestPathAllKeys(grid))
