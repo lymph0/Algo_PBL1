@@ -9,9 +9,10 @@ We apply a LeetCode 864 variant (pick up keys to open locks, stop at the goal `G
 
 | 파일 | 설명 |
 |---|---|
-| `index.html` | 시각화 페이지 (3D 건물, 2D grid, 상태 공간 레이어, 코드 하이라이트, `solution3.py` 실행 결과 출력). 브라우저로 열면 바로 실행됩니다. |
-| `solution3.py` | **최종 구현.** BFS (`shortestPathAllKeys`)와 입력 검사 (`load_grid`), 같은 폴더의 `input.txt` / `test_case_*.txt`를 읽어 최단 이동 횟수를 출력 |
-| `solution2.py` | solution3과 같은 규칙의 대화형 버전 (파일 이름을 입력받아 미로와 `Shortest distance` 출력) |
+| `index.html` | 시각화 페이지 (3D 건물, 2D grid, 상태 공간 레이어, 코드 하이라이트, `solution_final.py` 실행 결과 출력). 브라우저로 열면 바로 실행됩니다. |
+| `solution_final.py` | **최종 구현.** BFS (`shortestPathAllKeys`, `G`에 닿으면 종료)와 입력 검사 (`read_maze`). 파일 이름을 입력받아 미로와 `Shortest distance`를 출력 |
+| `solution3.py` | 같은 규칙의 일괄 실행 버전 (같은 폴더의 `input.txt` / `test_case_*.txt`를 읽어 최단 이동 횟수 출력) |
+| `solution2.py` | solution_final.py와 같은 내용의 이전 사본 |
 | `solution.py` | 이전 버전 (모든 열쇠를 모은 뒤 G 도착) |
 | `grids/sample_building.txt` | 예시 건물: 3개 층을 이어 붙인 grid 한 개 (9 × 41) |
 | `tests/test_solution.py` | LeetCode 예제와 예시 건물 테스트 |
@@ -19,8 +20,7 @@ We apply a LeetCode 864 variant (pick up keys to open locks, stop at the goal `G
 ## 실행 (Run)
 
 ```bash
-cp grids/sample_building.txt input.txt
-python solution3.py                # input.txt: 최단 이동 횟수 = 47
+python solution_final.py           # Maze file name: grids/sample_building.txt  →  Shortest distance: 47
 python tests/test_solution.py      # 또는 pytest
 ```
 

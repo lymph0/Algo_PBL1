@@ -203,8 +203,8 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
   <section class="block" id="outSec">
     <div class="blockhead">
       <div>
-        <h2>실행 결과 <span class="mono" style="color:var(--muted);font-weight:400;font-size:13px">python solution3.py</span></h2>
-        <p>지금 grid를 <code class="mono">input.txt</code>로 저장해 solution3.py를 실행했을 때 터미널에 찍히는 출력입니다. grid를 바꾸면 바로 다시 계산됩니다.</p>
+        <h2>실행 결과 <span class="mono" style="color:var(--muted);font-weight:400;font-size:13px">python solution_final.py</span></h2>
+        <p>지금 grid를 <code class="mono">input.txt</code>로 저장하고 solution_final.py를 실행해 파일 이름에 <code class="mono">input.txt</code>를 입력했을 때 터미널에 찍히는 출력입니다. grid를 바꾸면 바로 다시 계산됩니다.</p>
       </div>
     </div>
     <pre class="console" id="console"></pre>
@@ -624,7 +624,7 @@ function linesFor(e){
 function buildCode(){
   const ol = $('#code'); ol.innerHTML = '';
   for (const line of CODE[S.mode]){ const li = document.createElement('li'); li.textContent = line; ol.append(li); }
-  $('#codeTitle').textContent = 'solution3.py, BFS on (row, col, mask)';
+  $('#codeTitle').textContent = 'solution_final.py, BFS on (row, col, mask)';
 }
 function msg(e){
   if (!e) return { text:'재생을 누르거나 한 단계씩 넘겨 보세요.', cls:'' };
@@ -700,16 +700,30 @@ function updatePanels(){
   $('#walkBtn').disabled = !(D && D.done && S.res.path && S.res.path.length > 1);
 }
 
-// ---------- program output (mirrors solution3.py's print) ----------
+// ---------- program output (mirrors solution_final.py's print) ----------
 function escHtml(x){ return String(x).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[ch]); }
+// read_maze()의 ValueError 메시지 (solution_final.py와 같은 문구)
+function readMazeError(err){
+  const e = String(err);
+  if (e.includes('비어')) return 'The maze is empty.';
+  if (e.includes('길이')) return 'All rows must have the same length.';
+  if (e.includes('@')) return 'There must be exactly one starting point (@).';
+  if (e.includes('G')) return 'There must be exactly one goal (G).';
+  if (e.includes('기호')) return 'The maze contains invalid characters.';
+  return e;
+}
 function updateConsole(importErr){
-  const out = [`<span class="prompt">$ python solution3.py</span>`];
+  const out = [`<span class="prompt">$ python solution_final.py</span>`, 'Maze file name: input.txt'];
   const st = $('#outStats'); let html = '';
   const err = importErr || (S.res && S.res.error);
   if (err){
-    out.push(`<span class="errl">input.txt: 입력 오류 - ${escHtml(err)}</span>`);
+    out.push(`<span class="errl">Input error: ${escHtml(readMazeError(err))}</span>`);
+    out.push('Please check the file and try again.');
+    out.push('Maze file name: ');
   } else if (S.res){
-    out.push(`input.txt: 최단 이동 횟수 = <span class="${S.res.ok ? 'ans' : 'errl'}">${S.res.moves}</span>`);
+    out.push('', 'Input maze:');
+    for (const row of S.grid) out.push(escHtml(row.join('')));
+    out.push('', `Shortest distance: <span class="${S.res.ok ? 'ans' : 'errl'}">${S.res.moves}</span>`);
     const pops = S.res.events.filter(e => e.t === 'pop').length;
     const pushes = S.res.events.filter(e => e.t === 'push' || e.t === 'init').length;
     html += `<dt>grid</dt><dd>${S.m} × ${S.n}</dd>`;
