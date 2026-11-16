@@ -238,7 +238,7 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
     <details>
       <summary>grid 입력</summary>
       <div class="help">
-        <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F | …</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>.</p>
+        <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F | …</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행이고, solution_final.py가 읽는 파일 형식과 같습니다.</p>
         <p>층 사이의 계단 열은 계단인 행만 <code>.</code>, 나머지는 <code>#</code>로 씁니다. 층 수는 따로 적지 않아도 됩니다. 층 너비가 모두 같다고 보고, 층 사이 자리의 열이 전부 계단 열이 되는 층 수를 자동으로 찾습니다. 층 수에는 제한이 없고, 3D에서 층을 나눠 그릴 때만 쓰이므로 알고리즘 결과에는 영향이 없습니다.</p>
         <p>기호: <code>@</code> 시작 · <code>#</code> 벽 · <code>.</code> 빈칸 · <code>a–f</code> 열쇠 · <code>A–F</code> 자물쇠 · <code>G</code> 도착 지점. G에 도착하면 바로 끝납니다. 자물쇠는 같은 글자의 열쇠를 이미 주웠을 때만 지나갈 수 있습니다. 시작점 @와 도착점 G는 각각 정확히 하나여야 합니다.</p>
       </div>
@@ -246,7 +246,6 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
       <div class="row">
         <span class="chip">층 <b id="floorsOut" class="mono">–</b></span>
         <button class="btn primary" id="applyBtn">grid 적용</button>
-        <button class="btn" id="exportBtn">현재 grid 내보내기</button>
         <button class="btn" id="sampleBtn">선택한 건물 다시 불러오기</button>
       </div>
       <div class="err" id="ioErr"></div>
@@ -259,7 +258,7 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
 (() => {
 'use strict';
 const $ = s => document.querySelector(s);
-const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];   // solution_final.py의 directions와 같은 순서: 하, 상, 우, 좌
 const INF = 1e9;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -397,15 +396,26 @@ function detectFloors(){
   }
   $('#floorsOut').textContent = S.F > 1 ? `${S.F}개 층 · 층 너비 ${S.W} · 계단 열 ${S.F - 1}개` : '계단 열 없음 → 1개 층';
 }
-function setGrid(rows){
-  if (!rows.length) throw new Error('grid가 비어 있습니다.');
-  const n = rows[0].length;
-  rows.forEach((r,i) => {
-    if (r.length !== n) throw new Error(`${i}번 행 길이가 다릅니다 (${r.length} ≠ ${n}).`);
-    if (!/^[.#@a-fA-FG]*$/.test(r)) throw new Error(`${i}번 행에 쓸 수 없는 기호가 있습니다: ${r}`);
-  });
-  S.grid = rows.map(r => r.split(''));
-  S.m = rows.length; S.n = n;
+// solution_final.py의 read_maze()와 같은 검사를 같은 순서, 같은 문구로 합니다.
+function readMaze(text){
+  const matrix = [];
+  for (let line of text.split(/\r?\n/)){
+    line = line.trim();
+    if (line === '') continue;
+    matrix.push(line.split(''));
+  }
+  if (!matrix.length) throw new Error('The maze is empty.');
+  if (matrix.some(row => row.length !== matrix[0].length)) throw new Error('All rows must have the same length.');
+  const count = ch => matrix.reduce((a,row) => a + row.filter(x => x === ch).length, 0);
+  if (count('@') !== 1) throw new Error('There must be exactly one starting point (@).');
+  if (count('G') !== 1) throw new Error('There must be exactly one goal (G).');
+  const allowed = new Set('#.@GabcdefABCDEF');
+  if (matrix.some(row => row.some(cell => !allowed.has(cell)))) throw new Error('The maze contains invalid characters.');
+  return matrix;
+}
+function setGrid(matrix){
+  S.grid = matrix;
+  S.m = matrix.length; S.n = matrix[0].length;
   detectFloors();
 }
 
@@ -414,13 +424,11 @@ function findChar(ch){
   return null;
 }
 
-// ---------- algorithm 1: BFS over (row, col, keys) ----------
+// ---------- shortestPathAllKeys (solution_final.py) : BFS over (row, col, mask) ----------
 function runKeys(){
   const { grid, m, n } = S;
+  try { readMaze(grid.map(r => r.join('')).join('\n')); } catch (e){ return { error:e.message }; }
   const st = findChar('@');
-  const count = ch => grid.reduce((a,row) => a + row.filter(x => x === ch).length, 0);
-  if (count('@') !== 1) return { error:'출발점 @는 정확히 하나여야 합니다.' };
-  if (count('G') !== 1) return { error:'도착점 G는 정확히 하나여야 합니다.' };
   let FULL = 0, kb = 0;
   for (const row of grid) for (const ch of row) if (isKey(ch)){ const i = ch.charCodeAt(0) - 97; FULL |= 1 << i; kb = Math.max(kb, i + 1); }
   const sid = (r,c,k) => ((r*n + c) << 6) | k;
@@ -447,9 +455,9 @@ function runKeys(){
       if (nr < 0 || nr >= m || nc < 0 || nc >= n){ ev.push({ ...base, t:'oob' }); continue; }
       const ch = grid[nr][nc];
       if (ch === '#'){ ev.push({ ...base, t:'wall', ch }); continue; }
+      if (isLock(ch) && !(k & (1 << (ch.charCodeAt(0) - 65)))){ ev.push({ ...base, t:'locked', ch, nk:k }); continue; }
       let nk = k;
       if (isKey(ch)) nk = k | (1 << (ch.charCodeAt(0) - 97));
-      if (isLock(ch) && !(k & (1 << (ch.charCodeAt(0) - 65)))){ ev.push({ ...base, t:'locked', ch, nk }); continue; }
       const s2 = sid(nr,nc,nk);
       if (seen[s2]){ ev.push({ ...base, t:'seen', ch, nk }); continue; }
       seen[s2] = 1; par[s2] = sid(r,c,k);
@@ -628,7 +636,7 @@ function buildLayers(){
     const cv = document.createElement('canvas'); cv.width = S.n*cs; cv.height = S.m*cs;
     const held = []; for (let i = 0; i < kb; i++) if (mk & (1 << i)) held.push(String.fromCharCode(97 + i));
     const cap = document.createElement('figcaption');
-    cap.innerHTML = `<b>keys = ${bin(mk)}</b> ${held.length ? held.join(', ') + ' 보유' : '열쇠 없음'}`;
+    cap.innerHTML = `<b>mask = ${bin(mk)}</b> ${held.length ? held.join(', ') + ' 보유' : '열쇠 없음'}`;
     fig.append(cv, cap);
     const pick = () => { S.maskFilter = S.maskFilter === mk ? -1 : mk; dirty = true; };
     fig.addEventListener('click', pick);
@@ -841,18 +849,18 @@ function msg(e){
   if (S.mode === 'keys'){
     const K = x => `<code>${bin(x)}</code>`;
     switch (e.t){
-      case 'init': return { text:`시작 상태 ${P(e.r,e.c)}, keys = ${K(0)}을 큐에 넣고 seen에 기록합니다.`, cls:'' };
-      case 'pop': return { text:`큐에서 꺼냄: (${e.r}, ${e.c}, mask = ${K(e.k)}), dist = ${e.d}. 위치: ${where(e.r,e.c)}`, cls:'hot' };
-      case 'goal': return { text:`grid[r][c] == 'G' (keys = ${K(e.k)}). 도착 지점에 왔으므로 <b>return ${e.d}</b>`, cls:'ok' };
-      case 'oob': return { text:`${P(e.nr,e.nc)}는 grid 밖 → skip`, cls:'bad' };
-      case 'wall': return { text:`${P(e.nr,e.nc)}는 벽 “#” → skip`, cls:'bad' };
-      case 'locked': { const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k)} & ${K(1<<i)} = ${K(0)} → 열쇠가 없어 skip`, cls:'bad' }; }
-      case 'seen': return { text:`(${e.nr}, ${e.nc}, keys = ${K(e.nk)})는 이미 방문한 상태 → skip`, cls:'bad' };
+      case 'init': return { text:`queue에 (${e.r}, ${e.c}, mask = ${K(0)}, dist = 0)을 넣고 visited에 추가합니다.`, cls:'' };
+      case 'pop': return { text:`queue.popleft(): (${e.r}, ${e.c}, mask = ${K(e.k)}, dist = ${e.d}). 위치: ${where(e.r,e.c)}`, cls:'hot' };
+      case 'goal': return { text:`grid[r][c] == 'G' → <b>return ${e.d}</b>`, cls:'ok' };
+      case 'oob': return { text:`${P(e.nr,e.nc)}는 grid 밖 → continue`, cls:'bad' };
+      case 'wall': return { text:`${P(e.nr,e.nc)}는 벽 '#' → continue`, cls:'bad' };
+      case 'locked': { const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k)} & ${K(1<<i)} = ${K(0)} → continue`, cls:'bad' }; }
+      case 'seen': return { text:`state (${e.nr}, ${e.nc}, ${K(e.nk)}) in visited → continue`, cls:'bad' };
       case 'push':
-        if (isKey(e.ch)){ const i = e.ch.charCodeAt(0) - 97; return { text:`열쇠 ${e.ch} 획득: mask | (1 &lt;&lt; ${i}) = ${K(e.k)} | ${K(1<<i)} = ${K(e.nk)} → push (moves ${e.d+1})`, cls:'key' }; }
-        if (isLock(e.ch)){ const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k & (1<<i))} ≠ 0 → 통과, push (${e.nr}, ${e.nc}, ${K(e.nk)})`, cls:'key' }; }
-        return { text:`새 상태 (${e.nr}, ${e.nc}, keys = ${K(e.nk)}) push, moves ${e.d+1}${colInfo(e.nc).sep ? ' · 계단 진입' : ''}`, cls:'ok' };
-      case 'fail': return { text:`큐가 비었습니다 → <b>return -1</b>`, cls:'bad' };
+        if (isKey(e.ch)){ const i = e.ch.charCodeAt(0) - 97; return { text:`열쇠 ${e.ch}: new_mask = ${K(e.k)} | ${K(1<<i)} = ${K(e.nk)} → queue.append((${e.nr}, ${e.nc}, ${K(e.nk)}, ${e.d+1}))`, cls:'key' }; }
+        if (isLock(e.ch)){ const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k & (1<<i))} ≠ 0 → 통과, queue.append((${e.nr}, ${e.nc}, ${K(e.nk)}, ${e.d+1}))`, cls:'key' }; }
+        return { text:`queue.append((${e.nr}, ${e.nc}, ${K(e.nk)}, ${e.d+1}))${colInfo(e.nc).sep ? ' · 계단 진입' : ''}`, cls:'ok' };
+      case 'fail': return { text:`queue가 비었습니다 → <b>return -1</b>`, cls:'bad' };
     }
 
   }
@@ -876,7 +884,7 @@ function updatePanels(){
     if (S.mode === 'keys'){
       const k = D.last && D.last.nk !== undefined && D.last.t === 'push' ? D.last.nk : (D.cur ? D.cur.k : 0);
       const wrap = document.createElement('div'); wrap.className = 'bits';
-      const lab = document.createElement('span'); lab.className = 'bitsLabel'; lab.textContent = 'keys ='; wrap.append(lab);
+      const lab = document.createElement('span'); lab.className = 'bitsLabel'; lab.textContent = 'mask ='; wrap.append(lab);
       for (let i = Math.max(1,S.res.kb) - 1; i >= 0; i--){
         const present = !!(S.res.FULL & (1 << i)), on = !!(k & (1 << i));
         const d = document.createElement('div'); d.className = 'bit' + (on ? ' on' : '');
@@ -893,10 +901,10 @@ function updatePanels(){
       const kc = popc(S.res.FULL);
       const total = S.m*S.n*(1 << kc);
       html += `<dt>grid</dt><dd>${S.m} × ${S.n}</dd>`;
-      html += `<dt>열쇠 k</dt><dd>${kc} → FULL = ${bin(S.res.FULL)}</dd>`;
-      html += `<dt>현재 상태</dt><dd>${D.cur ? `(${D.cur.r}, ${D.cur.c}, ${bin(D.cur.k)}) moves ${D.cur.d}` : '–'}</dd>`;
-      html += `<dt>큐 크기</dt><dd>${D.qsize}</dd>`;
-      html += `<dt>방문 상태</dt><dd>${D.pushed} / ${total}</dd>`;
+      html += `<dt>key_mask</dt><dd>${bin(S.res.FULL)}</dd>`;
+      html += `<dt>현재 상태</dt><dd>${D.cur ? `(${D.cur.r}, ${D.cur.c}, ${bin(D.cur.k)}) dist ${D.cur.d}` : '–'}</dd>`;
+      html += `<dt>len(queue)</dt><dd>${D.qsize}</dd>`;
+      html += `<dt>len(visited)</dt><dd>${D.pushed} / ${total}</dd>`;
       const rs = D.done ? (S.res.ok ? `<span class="res-ok">return ${S.res.moves}</span>` : `<span class="res-bad">return -1</span>`) : '진행 중';
       html += `<dt>결과</dt><dd>${rs}</dd>`;
     }
@@ -913,22 +921,12 @@ function updatePanels(){
 
 // ---------- program output (mirrors solution_final.py's print) ----------
 function escHtml(x){ return String(x).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[ch]); }
-// read_maze()의 ValueError 메시지 (solution_final.py와 같은 문구)
-function readMazeError(err){
-  const e = String(err);
-  if (e.includes('비어')) return 'The maze is empty.';
-  if (e.includes('길이')) return 'All rows must have the same length.';
-  if (e.includes('@')) return 'There must be exactly one starting point (@).';
-  if (e.includes('G')) return 'There must be exactly one goal (G).';
-  if (e.includes('기호')) return 'The maze contains invalid characters.';
-  return e;
-}
 function updateConsole(importErr){
   const out = [`<span class="prompt">$ python solution_final.py</span>`, 'Maze file name: input.txt'];
   const st = $('#outStats'); let html = '';
   const err = importErr || (S.res && S.res.error);
   if (err){
-    out.push(`<span class="errl">Input error: ${escHtml(readMazeError(err))}</span>`);
+    out.push(`<span class="errl">Input error: ${escHtml(err)}</span>`);
     out.push('Please check the file and try again.');
     out.push('Maze file name: ');
   } else if (S.res){
@@ -1212,25 +1210,11 @@ function commitGrid(){
 
 // ---------- import / export ----------
 function importText(txt){
-  txt = txt.trim();
-  if (!txt) throw new Error('grid를 입력해 주세요.');
-  let rows;
-  if (txt.startsWith('[')){
-    const arr = JSON.parse(txt);
-    if (!Array.isArray(arr) || !arr.length) throw new Error('빈 배열입니다.');
-    rows = arr.map(String);
-  } else {
-    rows = txt.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
-  }
-  setGrid(rows);
+  setGrid(readMaze(txt));
 }
 $('#applyBtn').addEventListener('click', () => {
   try { importText($('#io').value); $('#ioErr').textContent = ''; commitGrid(); T.home = null; fitCamera(true); }
-  catch (e){ $('#ioErr').textContent = e.message; updateConsole(e.message); }
-});
-$('#exportBtn').addEventListener('click', () => {
-  $('#io').value = JSON.stringify(S.grid.map(r => r.join('')), null, 0).replace(/","/g, '",\n "');
-  $('#ioErr').textContent = 'LeetCode 864 형식 문자열 배열로 내보냈습니다.';
+  catch (e){ $('#ioErr').textContent = `Input error: ${e.message}`; updateConsole(e.message); }
 });
 function loadSample(){
   const cs = CASES[+$('#caseSel').value] || CASES[0];
