@@ -94,7 +94,7 @@ dl.stats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; fon
 .hp{ display:flex; gap:4px; margin-top:12px; flex-wrap:wrap; }
 .hp span{ width:18px; height:18px; border-radius:50%; background:var(--ok); }
 .hp span.lost{ background:var(--line); }
-ol.code{ list-style:none; margin:0; padding:8px 0; background:var(--code-bg); border-radius:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12px; line-height:1.6; overflow-x:auto; counter-reset:ln; }
+ol.code{ list-style:none; margin:0; max-height:420px; overflow-y:auto; padding:8px 0; background:var(--code-bg); border-radius:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12px; line-height:1.6; overflow-x:auto; counter-reset:ln; }
 ol.code li{ white-space:pre; padding:0 10px 0 0; counter-increment:ln; }
 ol.code li::before{ content:counter(ln); display:inline-block; width:2.4em; text-align:right; margin-right:10px; color:var(--muted); opacity:.6; }
 ol.code li.hl{ background:var(--code-hl); }
@@ -140,7 +140,6 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
   <header class="top">
     <div>
       <h1>열쇠로 문을 열며 출구 G까지 가는 최단 경로</h1>
-      <p class="sub">3층 건물 도면을 하나의 grid로 이어 붙이고, 상태 (row, col, keys) 위에서 BFS가 퍼져 나가는 과정을 봅니다. 자물쇠(A–F)는 맞는 열쇠(a–f)가 있어야 지나갈 수 있고, 도착 지점 G에 처음 닿는 순간 끝납니다. Pick up keys to open locks, stop at the goal G.</p>
     </div>
     <p class="badge">LeetCode 864 변형: 열쇠 + 도착 지점 G</p>
   </header>
@@ -152,10 +151,14 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
       <div class="hint">드래그: 회전 · 휠: 확대 · Shift+드래그: 이동</div>
       <div class="viewbar">
         <div class="chip">
+          <label for="caseSel">건물</label>
+          <select id="caseSel"></select>
+        </div>
+        <div class="chip">
           <label for="layoutSel">배치</label>
           <select id="layoutSel">
-            <option value="stack">층 쌓기 (계단 위치 맞춤)</option>
-            <option value="stair">grid 그대로 (계단식)</option>
+            <option value="stack">층 쌓기</option>
+            <option value="stair">grid 그대로</option>
           </select>
         </div>
         <div class="chip"><label for="levelIn">층 간격</label><input type="range" id="levelIn" min="1.4" max="5" step="0.1" value="2.6"></div>
@@ -166,7 +169,7 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
 
     <aside class="side">
       <div class="card">
-        <h2>재생 <span>Space 재생 · → 한 칸 · Shift+→ 다음 pop</span></h2>
+        <h2>재생</h2>
         <div class="ctrls">
           <button class="btn" id="bReset" aria-label="처음으로">⏮ 처음</button>
           <button class="btn" id="bStep">한 단계</button>
@@ -177,7 +180,6 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
         <div class="row"><label for="scrub">진행</label><input type="range" id="scrub" min="0" max="1" value="0"><span class="mono" id="scrubTxt">0 / 0</span></div>
         <div class="row"><label for="speed">속도</label><input type="range" id="speed" min="0" max="100" value="38"><span class="mono" id="speedTxt"></span></div>
         <div class="row">
-          <label><input type="checkbox" id="skipChk" checked> 벽·범위 밖 검사도 보기</label>
         </div>
       </div>
 
@@ -203,8 +205,7 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
   <section class="block" id="outSec">
     <div class="blockhead">
       <div>
-        <h2>실행 결과 <span class="mono" style="color:var(--muted);font-weight:400;font-size:13px">python solution_final.py</span></h2>
-        <p>지금 grid를 <code class="mono">input.txt</code>로 저장하고 solution_final.py를 실행해 파일 이름에 <code class="mono">input.txt</code>를 입력했을 때 터미널에 찍히는 출력입니다. grid를 바꾸면 바로 다시 계산됩니다.</p>
+        <h2>실행 결과</h2>
       </div>
     </div>
     <pre class="console" id="console"></pre>
@@ -215,12 +216,8 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
     <div class="blockhead">
       <div>
         <h2>알고리즘에 들어가는 grid</h2>
-        <p>1층 | 계단 열 | 2층 | 계단 열 | 3층 순서로 같은 행끼리 이어 붙인 모양입니다. 계단 열은 계단 칸만 열려 있고 나머지는 벽이라, 다음 층으로 가려면 반드시 계단을 지나야 합니다. 이렇게 이으면 계단은 아래층 grid의 오른쪽 끝과 위층 grid의 왼쪽 끝을 잇게 되므로, 3D에서는 2F처럼 짝수 번째 층을 좌우 반전해서 그려 계단이 위아래 같은 자리에 오도록 했습니다.</p>
       </div>
       <div class="ctrls">
-        <label class="chip" id="maskWrap">보이는 keys 상태
-          <select id="maskSel"></select>
-        </label>
         <button class="btn" id="editBtn" aria-pressed="false">grid 편집</button>
       </div>
     </div>
@@ -231,8 +228,7 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
   <section class="block" id="layersSec">
     <div class="blockhead">
       <div>
-        <h2>상태 공간 레이어 (state space)</h2>
-        <p>keys 값마다 grid가 한 장씩 복사된다고 보면 됩니다. 같은 칸이라도 들고 있는 열쇠가 다르면 다른 상태라서 다시 방문할 수 있고, 그래서 상태 수는 m·n·2<sup>k</sup>입니다. 레이어를 누르면 그 keys 값만 위 grid와 3D에 표시합니다.</p>
+        <h2>상태 공간 레이어</h2>
       </div>
     </div>
     <div class="layers" id="layers"></div>
@@ -240,18 +236,18 @@ dl.outstats dd{ margin:0; font-family:"IBM Plex Mono", ui-monospace, monospace; 
 
   <section class="block">
     <details>
-      <summary>우리 건물 grid 넣기 / 내보내기</summary>
+      <summary>grid 입력</summary>
       <div class="help">
-        <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>.</p>
-        <p>층 사이의 계단 열은 계단인 행만 <code>.</code>, 나머지는 <code>#</code>로 씁니다. 아래 층 수를 맞춰 주세요 (열 수 = 층 수 × 층 너비 + 계단 열 수). 층 수는 3D에서 층을 나눠 그릴 때만 쓰이고 알고리즘 결과에는 영향이 없습니다.</p>
+        <p>층을 <code>1F | 계단 열 | 2F | 계단 열 | 3F | …</code> 순서로 같은 행끼리 이어 붙인 <b>grid 한 개</b>를 넣습니다. 한 줄에 한 행, 또는 LeetCode 형식 <code>["@.a#", ...]</code>.</p>
+        <p>층 사이의 계단 열은 계단인 행만 <code>.</code>, 나머지는 <code>#</code>로 씁니다. 층 수는 따로 적지 않아도 됩니다. 층 너비가 모두 같다고 보고, 층 사이 자리의 열이 전부 계단 열이 되는 층 수를 자동으로 찾습니다. 층 수에는 제한이 없고, 3D에서 층을 나눠 그릴 때만 쓰이므로 알고리즘 결과에는 영향이 없습니다.</p>
         <p>기호: <code>@</code> 시작 · <code>#</code> 벽 · <code>.</code> 빈칸 · <code>a–f</code> 열쇠 · <code>A–F</code> 자물쇠 · <code>G</code> 도착 지점. G에 도착하면 바로 끝납니다. 자물쇠는 같은 글자의 열쇠를 이미 주웠을 때만 지나갈 수 있습니다. 시작점 @와 도착점 G는 각각 정확히 하나여야 합니다.</p>
       </div>
       <textarea id="io" spellcheck="false" aria-label="grid 입력"></textarea>
       <div class="row">
-        <label>층 수 <input type="number" id="floorsIn" min="1" max="8" value="3"></label>
+        <span class="chip">층 <b id="floorsOut" class="mono">–</b></span>
         <button class="btn primary" id="applyBtn">grid 적용</button>
         <button class="btn" id="exportBtn">현재 grid 내보내기</button>
-        <button class="btn" id="sampleBtn">예시 건물 다시 불러오기</button>
+        <button class="btn" id="sampleBtn">선택한 건물 다시 불러오기</button>
       </div>
       <div class="err" id="ioErr"></div>
     </details>
@@ -267,17 +263,81 @@ const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
 const INF = 1e9;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// ---------- sample building (one grid: 1F | stair col | 2F | stair col | 3F, each floor 13 wide) ----------
-const SAMPLE = [
-  "#########################################",
-  "#.a.#...#...###...#...#.b.###...#.c.#.G.#",
-  "#...#...#...###...#...#...###...#...#...#",
-  "##.###.####.####.###.###A#####.###B###.##",
-  "@..........................##...........#",
-  "#####.####C####.####.####.###.####.####.#",
-  "#...#...#...###...#...#...###...#...#...#",
-  "#...#.......###...#...#.........#...#...#",
-  "#########################################"
+// ---------- buildings (grids/ 폴더의 파일을 그대로 넣었습니다) ----------
+const CASES = [
+  { file:"test_case1", label:"test_case1 · 3층", rows:[
+    "#########################################",
+    "#...#.......###...C...#...###...#...#...#",
+    "#.a.#...#...###..##...#...###...#.....#G#",
+    "##.###.####.########B###.#####.###.###.##",
+    "@.......#.............D....##...........#",
+    "##A##.####.####.####.####.###.####.####.#",
+    "#...#...#...###d.##..c#e..###.......#..f#",
+    "#b#.#.......###.......#.....E.#.#.......#",
+    "#########################################"
+  ] },
+  { file:"test_case2", label:"test_case2 · 3층", rows:[
+    "#########################################",
+    "#...#.#.....###...C......e.##...#...#...#",
+    "#a#.....#...###...#.d##...###...#...#...#",
+    "##.###.####.########B###.#####.###.###.##",
+    "@.......#.............D....##...........#",
+    "##A##.####.####.####.####.###.####.####.#",
+    "#.......#...###...#...#...###...##..##..#",
+    "#b..#.......###...#..c#.....E...#...#fG.#",
+    "#########################################"
+  ] },
+  { file:"test_case3", label:"test_case3 · 3층", rows:[
+    "#########################################",
+    "#.a.#.......###...C.#....e.##...#...#...#",
+    "#.#...#.#...###..d#...#...###...#..f#...#",
+    "##.###.####.########B###.#####.###.###.##",
+    "@.......#.............D....##...........#",
+    "##A##.####.####.####.####.###.####.####.#",
+    "#...#...#...###.....c.#...###...#...#...#",
+    "#..b#.......###...#...##....E...#...#G.##",
+    "#########################################"
+  ] },
+  { file:"test_case4", label:"test_case4 · 2층", rows:[
+    "###########################",
+    "#.a.#...#.b.###.d.#.....#G#",
+    "#...#...#...###...A.....#.#",
+    "##.###.###C#####.####.###B#",
+    "@.........................#",
+    "#####.#############.#######",
+    "#...#...#...###...#...#...#",
+    "#.c.....#...###...D...#.e.#",
+    "###########################"
+  ] },
+  { file:"test_case5", label:"test_case5 · 4층", rows:[
+    "#######################################",
+    "#a..#.c.###.b.#........#....###G..#...#",
+    "#...#...###...A...###.#.#.#######A#.#.#",
+    "##.###B######.###.###.....C.......#...#",
+    "@.......###.......###.#.#.#####.#####.#",
+    "#.............#...###.d.#...###.......#",
+    "#######################################"
+  ] },
+  { file:"test_case6", label:"test_case6 · 3층, 도달 불가", rows:[
+    "#############################",
+    "#...#...###.c.#...###a.#b.#G#",
+    "#.#.#.#.###...C...###..#..#.#",
+    "@.......####.###.#####B##A#A#",
+    "#.#.#.#.....................#",
+    "#...#...###...#...###...#...#",
+    "#############################"
+  ] },
+  { file:"sample_building.txt", label:"sample_building · 3층", rows:[
+    "#########################################",
+    "#.a.#...#...###...#...#.b.###...#.c.#.G.#",
+    "#...#...#...###...#...#...###...#...#...#",
+    "##.###.####.####.###.###A#####.###B###.##",
+    "@.........................###...........#",
+    "#####.####C####.####.####.###.####.####.#",
+    "#...#...#...###...#...#...###...#...#...#",
+    "#...#.......###...#...#.........#...#...#",
+    "#########################################"
+  ] },
 ];
 
 // ---------- app state ----------
@@ -317,7 +377,27 @@ function where(r,c){
 function bin(x){ const w = Math.max(1, S.res ? S.res.kb : 1); return x.toString(2).padStart(w,'0'); }
 
 // ---------- grid setup ----------
-function setGrid(rows, F){
+// 계단 열: 빈칸 '.'이 정확히 한 칸이고 나머지는 모두 벽 '#'인 열
+function isStairCol(grid, c){
+  let open = 0;
+  for (const row of grid){ const ch = row[c]; if (ch === '.') open++; else if (ch !== '#') return false; }
+  return open === 1;
+}
+// 층 수 자동 인식: 층 너비가 모두 같다고 보고, 층 사이 자리(W, 2W+1, ...)가 전부 계단 열이 되는 층 수 중 가장 큰 값을 고릅니다.
+// (층 수 6이 맞으면 3, 2도 같이 맞기 때문에 가장 큰 값이 실제 층 수입니다.) 맞는 값이 없으면 1층으로 봅니다.
+function detectFloors(){
+  const { grid, n } = S;
+  S.F = 1; S.W = n;
+  for (let F = Math.floor((n + 1) / 2); F >= 2; F--){
+    if ((n + 1) % F) continue;
+    const W = (n + 1) / F - 1;
+    let ok = true;
+    for (let f = 0; f < F - 1 && ok; f++) ok = isStairCol(grid, f*(W+1) + W);
+    if (ok){ S.F = F; S.W = W; break; }
+  }
+  $('#floorsOut').textContent = S.F > 1 ? `${S.F}개 층 · 층 너비 ${S.W} · 계단 열 ${S.F - 1}개` : '계단 열 없음 → 1개 층';
+}
+function setGrid(rows){
   if (!rows.length) throw new Error('grid가 비어 있습니다.');
   const n = rows[0].length;
   rows.forEach((r,i) => {
@@ -326,10 +406,7 @@ function setGrid(rows, F){
   });
   S.grid = rows.map(r => r.split(''));
   S.m = rows.length; S.n = n;
-  F = Math.max(1, F|0);
-  if (F > 1 && (n - (F-1)) % F === 0 && (n - (F-1)) / F >= 1){ S.F = F; S.W = (n - (F-1)) / F; }
-  else { S.F = 1; S.W = n; }
-  $('#floorsIn').value = S.F;
+  detectFloors();
 }
 
 function findChar(ch){
@@ -477,8 +554,15 @@ function draw2D(){
   ctx.font = `600 12px "IBM Plex Sans KR", sans-serif`; ctx.textBaseline = 'middle';
   for (let f = 0; f < S.F; f++){
     const x0 = f*(S.W+1)*cs;
-    ctx.fillStyle = C.ink; ctx.fillText(`${f+1}F${f % 2 === 1 ? ' (3D에서 좌우 반전)' : ''}`, x0 + 2, 10);
-    if (f < S.F - 1){ ctx.fillStyle = C.stair; ctx.fillText('계단', x0 + S.W*cs - 2, 10); }
+    // 층이 좁으면 라벨을 줄여서 옆 층 라벨과 겹치지 않게 합니다.
+    const room = S.W*cs - 4;
+    const labels = [`${f+1}F`];
+    const lab = labels.find(t => ctx.measureText(t).width <= room) || labels[labels.length - 1];
+    ctx.textAlign = 'left'; ctx.fillStyle = C.ink; ctx.fillText(lab, x0 + 2, 10);
+    if (f < S.F - 1){
+      const sx = x0 + S.W*cs + cs/2, st = ctx.measureText('계단').width <= cs + 4 ? '계단' : '⇅';
+      ctx.textAlign = 'center'; ctx.fillStyle = C.stair; ctx.fillText(st, sx, 10); ctx.textAlign = 'left';
+    }
   }
   const fs = Math.max(8, Math.floor(cs*0.62));
   for (let r = 0; r < S.m; r++) for (let c = 0; c < S.n; c++){
@@ -546,15 +630,12 @@ function buildLayers(){
     const cap = document.createElement('figcaption');
     cap.innerHTML = `<b>keys = ${bin(mk)}</b> ${held.length ? held.join(', ') + ' 보유' : '열쇠 없음'}`;
     fig.append(cv, cap);
-    const pick = () => { S.maskFilter = S.maskFilter === mk ? -1 : mk; $('#maskSel').value = S.maskFilter; dirty = true; };
+    const pick = () => { S.maskFilter = S.maskFilter === mk ? -1 : mk; dirty = true; };
     fig.addEventListener('click', pick);
     fig.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); pick(); } });
     box.append(fig);
     layerEls.push({ mk, cv, fig, cs });
   }
-  const sel = $('#maskSel'); sel.innerHTML = '<option value="-1">전체 (가장 많이 모은 상태 색)</option>';
-  for (const L of layerEls){ const o = document.createElement('option'); o.value = L.mk; o.textContent = `keys = ${bin(L.mk)}`; sel.append(o); }
-  sel.value = S.maskFilter;
 }
 function drawLayers(){
   if (S.mode !== 'keys' || !S.res || S.res.error) return;
@@ -578,53 +659,181 @@ function drawLayers(){
 }
 
 // ---------- side panels ----------
+// solution_final.py 전체를 그대로 넣었습니다. 아래 linesFor의 숫자는 파일의 줄 번호(1부터)입니다.
 const CODE = {
   keys: [
+    "# -*- coding: utf-8 -*-",
+    "from collections import deque",
+    "",
+    "",
+    "def read_maze(filename):",
+    "    matrix = []  # 2D list to store the maze",
+    "",
+    "    # Open the text file",
+    "    with open(filename, 'r', encoding='utf-8-sig') as file:",
+    "",
+    "        # Read the file line by line",
+    "        for line in file:",
+    "",
+    "            # Remove newline characters and surrounding spaces",
+    "            line = line.strip()",
+    "",
+    "            # Skip empty lines",
+    "            if line == '':",
+    "                continue",
+    "",
+    "            # Convert the string into a list of characters",
+    "            matrix.append(list(line))",
+    "",
+    "    # Check if the maze is empty",
+    "    if not matrix:",
+    "        raise ValueError(\"The maze is empty.\")",
+    "",
+    "    # Check if all rows have the same length",
+    "    if any(len(row) != len(matrix[0]) for row in matrix):",
+    "        raise ValueError(\"All rows must have the same length.\")",
+    "",
+    "    # Check if there is exactly one starting point",
+    "    if sum(row.count('@') for row in matrix) != 1:",
+    "        raise ValueError(\"There must be exactly one starting point (@).\")",
+    "",
+    "    # Check if there is exactly one goal",
+    "    if sum(row.count('G') for row in matrix) != 1:",
+    "        raise ValueError(\"There must be exactly one goal (G).\")",
+    "",
+    "    # Check for invalid characters",
+    "    allowed = set(\"#.@GabcdefABCDEF\")",
+    "",
+    "    if any(cell not in allowed for row in matrix for cell in row):",
+    "        raise ValueError(\"The maze contains invalid characters.\")",
+    "",
+    "    return matrix",
+    "",
+    "",
     "def shortestPathAllKeys(grid):",
     "    m, n = len(grid), len(grid[0])",
-    "    start = position of '@'",
-    "    # 도착점 G에 닿으면 종료 (열쇠는 자물쇠를 열 때만 필요)",
-    "    queue = deque([(sr, sc, 0, 0)])    # (row, col, mask, dist)",
-    "    visited = {(sr, sc, 0)}",
+    "",
+    "    start = None",
+    "    key_mask = 0",
+    "",
+    "    # Find the starting point and all keys",
+    "    for r in range(m):",
+    "        for c in range(n):",
+    "            if grid[r][c] == '@':",
+    "                start = (r, c)",
+    "",
+    "            if 'a' <= grid[r][c] <= 'f':",
+    "                bit = 1 << (ord(grid[r][c]) - ord('a'))",
+    "                key_mask |= bit",
+    "",
+    "    # Target state: all keys collected",
+    "    target = key_mask",
+    "",
+    "    # Initialize BFS",
+    "    queue = deque([(start[0], start[1], 0, 0)])",
+    "    visited = set()",
+    "    visited.add((start[0], start[1], 0))",
+    "",
+    "    directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]",
+    "",
     "    while queue:",
     "        r, c, mask, dist = queue.popleft()",
-    "        if grid[r][c] == 'G': return dist",
+    "",
+    "        # Check if all keys are collected and the goal is reached",
+    "        if grid[r][c] == 'G':",
+    "            return dist",
+    "",
     "        for dr, dc in directions:",
     "            nr, nc = r + dr, c + dc",
-    "            if not (0 <= nr < m and 0 <= nc < n): continue",
+    "",
+    "            # Check grid boundaries",
+    "            if not (0 <= nr < m and 0 <= nc < n):",
+    "                continue",
+    "",
     "            cell = grid[nr][nc]",
-    "            if cell == '#': continue",
-    "            if 'A' <= cell <= 'F' and not mask & (1 << (ord(cell) - ord('A'))): continue",
+    "",
+    "            # Check wall",
+    "            if cell == '#':",
+    "                continue",
+    "",
+    "            # Check lock",
+    "            if 'A' <= cell <= 'F':",
+    "                bit = 1 << (ord(cell) - ord('A'))",
+    "",
+    "                if not (mask & bit):",
+    "                    continue",
+    "",
+    "            # Collect key",
     "            new_mask = mask",
-    "            if 'a' <= cell <= 'f': new_mask |= 1 << (ord(cell) - ord('a'))",
-    "            if (nr, nc, new_mask) in visited: continue",
-    "            visited.add((nr, nc, new_mask))",
+    "",
+    "            if 'a' <= cell <= 'f':",
+    "                bit = 1 << (ord(cell) - ord('a'))",
+    "                new_mask |= bit",
+    "",
+    "            # Check whether the state has been visited",
+    "            state = (nr, nc, new_mask)",
+    "",
+    "            if state in visited:",
+    "                continue",
+    "",
+    "            visited.add(state)",
     "            queue.append((nr, nc, new_mask, dist + 1))",
-    "    return -1"
+    "",
+    "    # Return -1 if no valid path exists",
+    "    return -1",
+    "",
+    "",
+    "# Main execution",
+    "if __name__ == \"__main__\":",
+    "",
+    "    while True:",
+    "        filename = input(\"Maze file name: \")",
+    "",
+    "        try:",
+    "            maze = read_maze(filename)",
+    "            break",
+    "",
+    "        except FileNotFoundError:",
+    "            print(\"File not found. Please enter the filename again.\")",
+    "",
+    "        except (OSError, UnicodeError, ValueError) as exc:",
+    "            print(f\"Input error: {exc}\")",
+    "            print(\"Please check the file and try again.\")",
+    "",
+    "    # Print the maze",
+    "    print(\"\\nInput maze:\")",
+    "    for row in maze:",
+    "        print(''.join(row))",
+    "",
+    "    # Find the shortest path",
+    "    min_dist = shortestPathAllKeys(maze)",
+    "",
+    "    # Print the result",
+    "    print(\"\\nShortest distance:\", min_dist)"
   ]
 };
 function linesFor(e){
   if (!e) return [];
+  let L = [];
   if (S.mode === 'keys'){
     switch (e.t){
-      case 'init': return [4,5];
-      case 'pop': return [6,7];
-      case 'goal': return [8];
-      case 'oob': return [9,10,11];
-      case 'wall': return [12,13];
-      case 'locked': return [14];
-      case 'seen': return [17];
-      case 'push': return isKey(e.ch) ? [15,16,18,19] : isLock(e.ch) ? [14,18,19] : [18,19];
-      case 'fail': return [20];
+      case 'init': L = [69,70,71]; break;
+      case 'pop': L = [75,76]; break;
+      case 'goal': L = [79,80]; break;
+      case 'oob': L = [82,83,86,87]; break;
+      case 'wall': L = [89,92,93]; break;
+      case 'locked': L = [96,97,99,100]; break;
+      case 'seen': L = [110,112,113]; break;
+      case 'push': L = isKey(e.ch) ? [103,105,106,107,110,115,116] : isLock(e.ch) ? [96,97,99,103,110,115,116] : [103,110,115,116]; break;
+      case 'fail': L = [119]; break;
     }
-
   }
-  return [];
+  return L.map(x => x - 1);
 }
 function buildCode(){
   const ol = $('#code'); ol.innerHTML = '';
   for (const line of CODE[S.mode]){ const li = document.createElement('li'); li.textContent = line; ol.append(li); }
-  $('#codeTitle').textContent = 'solution_final.py, BFS on (row, col, mask)';
+  $('#codeTitle').textContent = 'solution_final.py';
 }
 function msg(e){
   if (!e) return { text:'재생을 누르거나 한 단계씩 넘겨 보세요.', cls:'' };
@@ -636,14 +845,14 @@ function msg(e){
       case 'pop': return { text:`큐에서 꺼냄: (${e.r}, ${e.c}, mask = ${K(e.k)}), dist = ${e.d}. 위치: ${where(e.r,e.c)}`, cls:'hot' };
       case 'goal': return { text:`grid[r][c] == 'G' (keys = ${K(e.k)}). 도착 지점에 왔으므로 <b>return ${e.d}</b>`, cls:'ok' };
       case 'oob': return { text:`${P(e.nr,e.nc)}는 grid 밖 → skip`, cls:'bad' };
-      case 'wall': return { text:`${P(e.nr,e.nc)}는 벽 “#” → skip${colInfo(e.nc).sep ? ' (계단 열의 막힌 칸)' : ''}`, cls:'bad' };
+      case 'wall': return { text:`${P(e.nr,e.nc)}는 벽 “#” → skip`, cls:'bad' };
       case 'locked': { const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k)} & ${K(1<<i)} = ${K(0)} → 열쇠가 없어 skip`, cls:'bad' }; }
       case 'seen': return { text:`(${e.nr}, ${e.nc}, keys = ${K(e.nk)})는 이미 방문한 상태 → skip`, cls:'bad' };
       case 'push':
         if (isKey(e.ch)){ const i = e.ch.charCodeAt(0) - 97; return { text:`열쇠 ${e.ch} 획득: mask | (1 &lt;&lt; ${i}) = ${K(e.k)} | ${K(1<<i)} = ${K(e.nk)} → push (moves ${e.d+1})`, cls:'key' }; }
         if (isLock(e.ch)){ const i = e.ch.charCodeAt(0) - 65; return { text:`자물쇠 ${e.ch}: mask & (1 &lt;&lt; ${i}) = ${K(e.k & (1<<i))} ≠ 0 → 통과, push (${e.nr}, ${e.nc}, ${K(e.nk)})`, cls:'key' }; }
         return { text:`새 상태 (${e.nr}, ${e.nc}, keys = ${K(e.nk)}) push, moves ${e.d+1}${colInfo(e.nc).sep ? ' · 계단 진입' : ''}`, cls:'ok' };
-      case 'fail': return { text:`큐가 비었습니다 → <b>return -1</b> (G에 갈 수 없음)`, cls:'bad' };
+      case 'fail': return { text:`큐가 비었습니다 → <b>return -1</b>`, cls:'bad' };
     }
 
   }
@@ -659,6 +868,8 @@ function updatePanels(){
   // code highlight
   const hl = new Set(linesFor(D && D.last));
   [...$('#code').children].forEach((li,i) => li.classList.toggle('hl', hl.has(i)));
+  const firstHl = $('#code').children[Math.min(...hl)];
+  if (firstHl){ const ol = $('#code'); const top = firstHl.offsetTop - ol.offsetTop; if (top < ol.scrollTop || top > ol.scrollTop + ol.clientHeight - 60) ol.scrollTop = Math.max(0, top - 80); }
   // bits / health
   const bb = $('#bitBox'); bb.innerHTML = '';
   if (S.res && !S.res.error){
@@ -681,11 +892,11 @@ function updatePanels(){
     if (S.mode === 'keys'){
       const kc = popc(S.res.FULL);
       const total = S.m*S.n*(1 << kc);
-      html += `<dt>grid</dt><dd>${S.m} × ${S.n} (층 ${S.F}개, 층 너비 ${S.W})</dd>`;
+      html += `<dt>grid</dt><dd>${S.m} × ${S.n}</dd>`;
       html += `<dt>열쇠 k</dt><dd>${kc} → FULL = ${bin(S.res.FULL)}</dd>`;
       html += `<dt>현재 상태</dt><dd>${D.cur ? `(${D.cur.r}, ${D.cur.c}, ${bin(D.cur.k)}) moves ${D.cur.d}` : '–'}</dd>`;
       html += `<dt>큐 크기</dt><dd>${D.qsize}</dd>`;
-      html += `<dt>방문 상태</dt><dd>${D.pushed} / ${total} (m·n·2^k)</dd>`;
+      html += `<dt>방문 상태</dt><dd>${D.pushed} / ${total}</dd>`;
       const rs = D.done ? (S.res.ok ? `<span class="res-ok">return ${S.res.moves}</span>` : `<span class="res-bad">return -1</span>`) : '진행 중';
       html += `<dt>결과</dt><dd>${rs}</dd>`;
     }
@@ -887,7 +1098,7 @@ function build3D(){
   if (!T.home) fitCamera(true);
   // legend
   const lgd = $('#legend3d');
-  const items = [[C.lo,'방문 (열쇠 적음)'],[C.hi,'방문 (열쇠 많음)'],[C.frontier,'큐에 있음'],[C.hot,'현재 / 최단 경로'],[C.stair,'계단'],[C.ok,'도착 지점 G']];
+  const items = [[`linear-gradient(90deg, ${C.lo}, ${C.hi})`,'방문'],[C.frontier,'큐에 있음'],[C.hot,'현재 / 최단 경로'],[C.stair,'계단'],[C.ok,'도착 지점 G']];
   lgd.innerHTML = items.map(([c,t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
 }
 function fitCamera(reset){
@@ -994,6 +1205,7 @@ plan.addEventListener('pointerup', endPaint); plan.addEventListener('pointercanc
 
 function commitGrid(){
   S.maskFilter = -1;
+  detectFloors();   // 편집으로 계단 열이 생기거나 없어질 수 있으므로 다시 인식
   run(); buildLayers(); build3D(); dirty = true;
   $('#io').value = S.grid.map(r => r.join('')).join('\n');
 }
@@ -1002,7 +1214,7 @@ function commitGrid(){
 function importText(txt){
   txt = txt.trim();
   if (!txt) throw new Error('grid를 입력해 주세요.');
-  let rows, F = parseInt($('#floorsIn').value, 10) || 1;
+  let rows;
   if (txt.startsWith('[')){
     const arr = JSON.parse(txt);
     if (!Array.isArray(arr) || !arr.length) throw new Error('빈 배열입니다.');
@@ -1010,7 +1222,7 @@ function importText(txt){
   } else {
     rows = txt.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
   }
-  setGrid(rows, F);
+  setGrid(rows);
 }
 $('#applyBtn').addEventListener('click', () => {
   try { importText($('#io').value); $('#ioErr').textContent = ''; commitGrid(); T.home = null; fitCamera(true); }
@@ -1021,13 +1233,15 @@ $('#exportBtn').addEventListener('click', () => {
   $('#ioErr').textContent = 'LeetCode 864 형식 문자열 배열로 내보냈습니다.';
 });
 function loadSample(){
-  $('#floorsIn').value = 3;
-  $('#io').value = SAMPLE.join('\n');
+  const cs = CASES[+$('#caseSel').value] || CASES[0];
+  $('#io').value = cs.rows.join('\n');
   importText($('#io').value);
   $('#ioErr').textContent = '';
   commitGrid(); fitCamera(true);
 }
 $('#sampleBtn').addEventListener('click', loadSample);
+$('#caseSel').innerHTML = CASES.map((cs,i) => `<option value="${i}">${cs.label}</option>`).join('');
+$('#caseSel').addEventListener('change', () => { S.playing = false; updatePlayBtn(); T.home = null; loadSample(); });
 
 // ---------- controls ----------
 $('#bReset').addEventListener('click', () => { S.playing = false; updatePlayBtn(); goTo(0); S.walk = null; });
@@ -1042,8 +1256,6 @@ function togglePlay(){
 $('#scrub').addEventListener('input', e => { S.playing = false; updatePlayBtn(); goTo(+e.target.value); });
 function setSpeed(){ const v = +$('#speed').value; S.eps = Math.round(Math.pow(10, v / 100 * 3)); $('#speedTxt').textContent = `${S.eps} 단계/초`; }
 $('#speed').addEventListener('input', setSpeed);
-$('#skipChk').addEventListener('change', e => { S.showSkips = e.target.checked; });
-$('#maskSel').addEventListener('change', e => { S.maskFilter = +e.target.value; dirty = true; });
 $('#editBtn').addEventListener('click', () => {
   S.editing = !S.editing;
   $('#editBtn').setAttribute('aria-pressed', S.editing);

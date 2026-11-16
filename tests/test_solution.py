@@ -35,5 +35,27 @@ def test_sample_building():
     assert len(grid) == 9 and len(grid[0]) == 41
     assert shortestPathAllKeys(grid) == 47
 
+# grids/test_case1~6: 기대하는 최단 이동 횟수 (test_case6은 G에 갈 수 없는 경우)
+TEST_CASES = {
+    "test_case1": 63,    # 3층
+    "test_case2": 73,    # 3층
+    "test_case3": 130,   # 3층
+    "test_case4": 46,    # 2층 (3층 미만)
+    "test_case5": 84,    # 4층 (3층 초과)
+    "test_case6": -1,    # 3층, 열쇠 a는 자물쇠 B 뒤, 열쇠 b는 자물쇠 A 뒤, G도 자물쇠 A 뒤라 도달 불가
+}
+
+def test_grid_cases():
+    for name, expected in TEST_CASES.items():
+        grid = read_maze(os.path.join(ROOT, "grids", name))
+        assert shortestPathAllKeys(grid) == expected, name
+
+def test_case6_blocked_only_by_locks():
+    # test_case6에서 열쇠 b 앞의 자물쇠 A 하나만 없애면 G에 갈 수 있어야 합니다 (막힌 이유가 자물쇠라는 확인)
+    grid = read_maze(os.path.join(ROOT, "grids", "test_case6"))
+    assert grid[3][25] == "A"
+    grid[3][25] = "."
+    assert shortestPathAllKeys(grid) == 53
+
 if __name__ == "__main__":
-    test_leetcode_examples_with_goal(); test_goal_rules(); test_read_maze_validation(); test_sample_building(); print("all tests passed")
+    test_leetcode_examples_with_goal(); test_goal_rules(); test_read_maze_validation(); test_sample_building(); test_grid_cases(); test_case6_blocked_only_by_locks(); print("all tests passed")
